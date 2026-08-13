@@ -66,6 +66,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 import xyz.mufanc.bqc.ui.theme.BoseQCTheme
 
 class MainActivity : ComponentActivity() {
@@ -415,6 +416,7 @@ private fun NoiseControls(
 ) {
     val available = state.settings != null && state.phase == BoseSession.Phase.Connected
     val enabled = state.settings?.anc == true
+    var pendingLevel = state.uiLevel
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
@@ -472,8 +474,11 @@ private fun NoiseControls(
             }
             Slider(
                 value = state.uiLevel.toFloat(),
-                onValueChange = { onLevelChange(it.toInt()) },
-                onValueChangeFinished = { onLevelCommit(state.uiLevel) },
+                onValueChange = {
+                    pendingLevel = it.roundToInt()
+                    onLevelChange(pendingLevel)
+                },
+                onValueChangeFinished = { onLevelCommit(pendingLevel) },
                 enabled = available && enabled,
                 valueRange = 0f..Bmap.MAX_LEVEL.toFloat(),
                 steps = Bmap.MAX_LEVEL - 1,
