@@ -8,10 +8,14 @@ import android.os.Looper
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 
+internal object ForegroundControl {
+    var cycleLevel: (() -> Unit)? = null
+}
+
 class NoiseTileService : TileService() {
     private val main = Handler(Looper.getMainLooper())
     private var session: BoseSession? = null
-    private var sentToggle = false
+    private var sentUpdate = false
 
     override fun onStartListening() {
         super.onStartListening()
@@ -20,6 +24,11 @@ class NoiseTileService : TileService() {
 
     override fun onClick() {
         super.onClick()
+        if (BoseSession.cachedSettings(this)?.anc != true) return
+        ForegroundControl.cycleLevel?.let {
+            it()
+            return
+        }
         if (
             checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) !=
             PackageManager.PERMISSION_GRANTED
@@ -29,10 +38,11 @@ class NoiseTileService : TileService() {
         }
 
         closeSession()
-        sentToggle = false
+        sentUpdate = false
         qsTile?.apply {
-            state = Tile.STATE_UNAVAILABLE
+            state = Tile.STATE_ACTIVE
             subtitle = "正在连接"
+            stateDescription = "正在切换降噪等级"
             updateTile()
         }
         session = BoseSession(
@@ -44,9 +54,13 @@ class NoiseTileService : TileService() {
                 }
             },
             onSettings = { settings ->
-                if (!sentToggle) {
-                    sentToggle = true
-                    session?.update(settings.copy(anc = !settings.anc))
+                if (!settings.anc) {
+                    updateTile(settings, null)
+                    closeSession()
+                } else if (!sentUpdate) {
+                    sentUpdate = true
+                    val level = Bmap.nextQuickLevel(Bmap.toUiLevel(settings.level))
+                    session?.update(settings.copy(level = Bmap.toProtocolLevel(level)))
                 } else {
                     updateTile(settings, null)
                     closeSession()
@@ -67,21 +81,15 @@ class NoiseTileService : TileService() {
             icon = Icon.createWithResource(this@NoiseTileService, R.drawable.ic_tile)
             label = getString(R.string.tile_name)
             when {
-                error != null -> {
-                    state = Tile.STATE_UNAVAILABLE
-                    subtitle = error
-                    stateDescription = error
-                }
-
                 settings?.anc == true -> {
                     val level = Bmap.toUiLevel(settings.level)
                     state = Tile.STATE_ACTIVE
-                    subtitle = "$level 级"
-                    stateDescription = "降噪 $level 级"
+                    subtitle = error ?: "$level 级"
+                    stateDescription = error ?: "降噪 $level 级"
                 }
 
                 else -> {
-                    state = Tile.STATE_INACTIVE
+                    state = Tile.STATE_UNAVAILABLE
                     subtitle = "关闭"
                     stateDescription = "降噪关闭"
                 }

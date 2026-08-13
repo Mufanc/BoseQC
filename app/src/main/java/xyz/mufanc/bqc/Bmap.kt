@@ -47,6 +47,12 @@ internal object Bmap {
 
     fun toProtocolLevel(uiLevel: Int) = MAX_LEVEL - uiLevel.coerceIn(0, MAX_LEVEL)
 
+    fun nextQuickLevel(level: Int) = when {
+        level < 5 -> 5
+        level < 10 -> 10
+        else -> 0
+    }
+
     fun ByteArray.hex() = joinToString(" ") { "%02X".format(it.toInt() and 0xff) }
 
     private fun Boolean.toByte() = if (this) 1.toByte() else 0.toByte()

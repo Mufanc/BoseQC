@@ -121,6 +121,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        ForegroundControl.cycleLevel = ::cycleLevel
         if (
             checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) ==
             PackageManager.PERMISSION_GRANTED
@@ -130,6 +131,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        ForegroundControl.cycleLevel = null
         session?.close()
         session = null
         super.onStop()
@@ -184,6 +186,11 @@ class MainActivity : ComponentActivity() {
     private fun setLevel(uiLevel: Int) {
         val settings = uiState.settings ?: return
         session?.update(settings.copy(level = Bmap.toProtocolLevel(uiLevel)))
+    }
+
+    private fun cycleLevel() {
+        val settings = uiState.settings?.takeIf { it.anc } ?: return
+        setLevel(Bmap.nextQuickLevel(Bmap.toUiLevel(settings.level)))
     }
 
     private fun requestTile() {

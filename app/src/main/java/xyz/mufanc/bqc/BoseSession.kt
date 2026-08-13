@@ -4,10 +4,12 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Handler
 import android.os.Looper
+import android.service.quicksettings.TileService
 import java.io.Closeable
 import java.io.IOException
 import java.io.InputStream
@@ -176,6 +178,10 @@ internal class BoseSession(
                 .putBoolean("anc", settings.anc)
                 .putBoolean("has_settings", true)
                 .apply()
+            TileService.requestListeningState(
+                context,
+                ComponentName(context, NoiseTileService::class.java),
+            )
         }
 
         fun cachedSettings(context: Context): Bmap.Settings? {
