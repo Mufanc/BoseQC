@@ -1,6 +1,13 @@
 package xyz.mufanc.bqc
 
 import android.Manifest
+import android.annotation.SuppressLint
+import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
+import android.content.BroadcastReceiver
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.drawable.Icon
 import android.os.Handler
@@ -10,6 +17,15 @@ import android.service.quicksettings.TileService
 
 internal object ForegroundControl {
     var cycleLevel: (() -> Unit)? = null
+}
+
+class BluetoothConnectionReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        TileService.requestListeningState(
+            context,
+            ComponentName(context, NoiseTileService::class.java),
+        )
+    }
 }
 
 class NoiseTileService : TileService() {
@@ -81,6 +97,12 @@ class NoiseTileService : TileService() {
             icon = Icon.createWithResource(this@NoiseTileService, R.drawable.ic_tile)
             label = getString(R.string.tile_name)
             when {
+                !isHeadphonesConnected() -> {
+                    state = Tile.STATE_UNAVAILABLE
+                    subtitle = error ?: "未连接"
+                    stateDescription = error ?: "耳机未连接"
+                }
+
                 settings?.anc == true -> {
                     val level = Bmap.toUiLevel(settings.level)
                     state = Tile.STATE_ACTIVE
@@ -97,6 +119,14 @@ class NoiseTileService : TileService() {
             updateTile()
         }
     }
+
+    @SuppressLint("MissingPermission")
+    private fun isHeadphonesConnected() =
+        checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) ==
+            PackageManager.PERMISSION_GRANTED &&
+            getSystemService(BluetoothManager::class.java).adapter
+                ?.getProfileConnectionState(BluetoothProfile.A2DP) ==
+            BluetoothProfile.STATE_CONNECTED
 
     private fun closeSession() {
         session?.close()
