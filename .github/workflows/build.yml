@@ -1,0 +1,32 @@
+name: Build Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+      - uses: Mufanc/android-build-support@299d2ec1ab6b55f586b620543190159cf31ec135
+        with:
+          keystore: ${{ secrets.RELEASE_KEYSTORE }}
+          store-password: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          key-alias: key0
+          key-password: ${{ secrets.RELEASE_KEY_PASSWORD }}
+      - run: ./gradlew assembleRelease --no-daemon
+      - uses: actions/upload-artifact@v7
+        with:
+          name: BoseQC-release
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
